@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0f14">
+  <meta name="description" content="烬土防线：一款原创的网格部署式塔防游戏。">
+  <title>烬土防线</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <canvas id="stage"></canvas>
+    <div id="vignette"></div>
+    <div id="slowmo"></div>
+
+    <!-- 战斗 HUD -->
+    <div id="hud" class="hidden">
+      <div class="hud-top">
+        <div class="hud-group">
+          <button id="btn-pause" class="hud-btn" title="暂停（空格）" aria-label="暂停">
+            <svg viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></svg>
+          </button>
+          <button id="btn-speed" class="hud-btn speed" title="切换速度（F）">1×</button>
+        </div>
+        <div class="hud-stats">
+          <div class="stat" title="已击破 / 敌人总数">
+            <svg viewBox="0 0 24 24" class="ico enemy"><path data-icon="enemy"/></svg>
+            <span id="stat-kills">0/0</span>
+          </div>
+          <div class="stat life" title="防御点剩余生命">
+            <svg viewBox="0 0 24 24" class="ico"><path data-icon="life"/></svg>
+            <span id="stat-life">10</span>
+          </div>
+        </div>
+        <div class="hud-group right">
+          <span id="level-tag"></span>
+        </div>
+      </div>
+
+      <div class="hud-bottom">
+        <div class="dp-box">
+          <div class="dp-main">
+            <span class="dp-label">部署点数</span>
+            <span id="dp-value">0</span>
+          </div>
+          <div class="dp-bar"><i id="dp-fill"></i></div>
+          <div class="dp-slots">剩余可部署 <b id="slots">0</b></div>
+        </div>
+        <div id="cards"></div>
+      </div>
+
+      <aside id="unit-panel" class="hidden"></aside>
+      <div id="radial" class="hidden">
+        <button id="btn-retreat" class="radial-btn retreat" title="撤退：返还一半部署费用">
+          <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          <span id="retreat-refund">+0</span>
+        </button>
+        <button id="btn-skill" class="radial-btn skill" title="发动技能">
+          <span class="skill-ring"></span>
+          <span class="skill-name" id="skill-name"></span>
+          <span class="skill-state" id="skill-state"></span>
+        </button>
+      </div>
+      <div id="dir-hint" class="hidden">
+        <span>拖动或点击方向箭头来确定朝向</span>
+        <button id="btn-dir-cancel">取消</button>
+      </div>
+      <div id="banner"></div>
+      <div id="toast"></div>
+    </div>
+
+    <!-- 主菜单 -->
+    <section id="menu" class="screen">
+      <div class="menu-inner">
+        <header class="title">
+          <div class="title-mark"><svg viewBox="0 0 24 24"><path data-icon="bulwark"/></svg></div>
+          <div>
+            <h1>烬土防线</h1>
+            <p class="subtitle">EMBERLINE · 网格部署塔防</p>
+          </div>
+        </header>
+        <div id="level-list"></div>
+        <div class="menu-actions">
+          <button id="btn-help" class="btn ghost">作战手册</button>
+          <button id="btn-mute" class="btn ghost">音效：开</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 暂停 -->
+    <section id="pause" class="screen dim hidden">
+      <div class="dialog">
+        <h2>作战暂停</h2>
+        <div class="dialog-actions">
+          <button id="btn-resume" class="btn primary">继续作战</button>
+          <button id="btn-restart" class="btn">重新开始</button>
+          <button id="btn-quit" class="btn ghost">放弃并返回</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 结算 -->
+    <section id="result" class="screen dim hidden">
+      <div class="dialog result">
+        <p class="result-kicker" id="result-kicker"></p>
+        <h2 id="result-title"></h2>
+        <div class="stars" id="result-stars"></div>
+        <dl class="result-stats" id="result-stats"></dl>
+        <div class="dialog-actions">
+          <button id="btn-next" class="btn primary">下一关</button>
+          <button id="btn-retry" class="btn">再次挑战</button>
+          <button id="btn-back" class="btn ghost">返回关卡选择</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 作战手册 -->
+    <section id="help" class="screen dim hidden">
+      <div class="dialog help">
+        <button id="btn-help-close" class="close" aria-label="关闭">×</button>
+        <h2>作战手册</h2>
+        <div class="help-body">
+          <h3>基本操作</h3>
+          <ul class="tips">
+            <li><b>部署</b>：把下方的干员卡拖到地图上发光的格子（也可以先点卡片，再点格子）。</li>
+            <li><b>朝向</b>：放下后向某个方向拖动并松开，干员的攻击范围会朝向那一侧。</li>
+            <li><b>地面 / 高台</b>：近战干员只能放在地面上阻挡敌人，远程干员只能放在高台上。</li>
+            <li><b>阻挡</b>：地面干员会拦住经过的敌人，阻挡数用完后其余敌人会穿过去。飞行敌人无法被阻挡。</li>
+            <li><b>技能</b>：点击已部署的干员，技能就绪时可以发动；标有“自动”的技能会自行释放。</li>
+            <li><b>撤退</b>：撤退会返还一半费用，之后需要等待再部署时间。阵亡则不返还。</li>
+            <li><b>子弹时间</b>：拖动卡片或查看干员时，战斗会放慢，方便从容决策。</li>
+            <li><b>快捷键</b>：空格 暂停，F 切换倍速，Esc 取消，方向键 + 回车 选择朝向。</li>
+          </ul>
+          <h3>干员职业</h3>
+          <div id="help-classes" class="help-grid"></div>
+          <h3>敌人情报</h3>
+          <div id="help-enemies" class="help-grid"></div>
+        </div>
+      </div>
+    </section>
+
+    <div id="rotate-hint">横屏游玩体验更佳</div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/engine.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "name": "emberline",
+  "version": "1.0.0",
+  "private": true,
+  "description": "烬土防线：原创网格部署式塔防网页游戏",
+  "scripts": {
+    "check": "node tools/check.js"
+  }
+}
